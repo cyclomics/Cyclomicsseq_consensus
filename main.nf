@@ -1,0 +1,135 @@
+#!/usr/bin/env nextflow
+/*
+========================================================================================
+    Cyclomics/CycloSeq Informed pipeline
+========================================================================================
+    Github : https://github.com/cyclomics/cycloseq
+    Website: https://cyclomics.com
+----------------------------------------------------------------------------------------
+*/
+
+nextflow.enable.dsl = 2
+
+/*
+========================================================================================
+    PARAMETER VALUES
+========================================================================================
+*/
+// ### PARAMETERS
+params.read_folder             = ""
+params.read_pattern               = "**.{fq,fastq,fq.gz,fastq.gz}"
+params.sequencing_summary_path = "${projectDir}/sequencing_summary*.txt"
+params.backbone                   = "BBCS"
+
+params.reference = ""
+// reference indexes are expected to be in reference folder
+params.output_dir = "$HOME/Data/CyclomicsSeq"
+
+
+// method selection
+params.consensus_method        = "cycas"
+
+// Pipeline performance metrics
+params.min_repeat_count = 3
+
+if (params.backbone == "BB41") {
+    backbone_file = "$projectDir/backbones/BB41.fasta"
+}
+else if (params.backbone == "BB41T") {
+    backbone_file = "$projectDir/backbones/BB41T.fasta"
+}
+else if (params.backbone == "BB42") {
+    backbone_file = "$projectDir/backbones/BB42.fasta"
+}
+else if (params.backbone == "BB22") {
+    backbone_file = "$projectDir/backbones/BB22.fasta"
+}
+else if (params.backbone == "BB25") {
+    backbone_file = "$projectDir/backbones/BB25.fasta"
+}
+else if (params.backbone == "BBCS") {
+    backbone_file = "$projectDir/backbones/BBCS.fasta"
+}
+else if (params.backbone == "BBCR") {
+    backbone_file = "$projectDir/backbones/BBCR.fasta"
+}
+else {
+    backbone_file = params.backbone_file
+}
+
+
+// ### Printout for user
+log.info """
+    ===================================================
+    Cyclomics/CyclomicsSeq_Consensus : Consensus generation
+    ===================================================
+    Inputs:
+        input_reads              : $params.read_folder
+        read_pattern             : $params.read_pattern
+        reference                : $params.reference
+        backbone                 : $params.backbone
+        backbone_file            : $params.backbone_file
+        output folder            : $params.output_dir
+        Cmd line                 : $workflow.commandLine
+    Method:  
+        consensus_method        : $params.consensus_method
+
+    Other:
+        tbd
+"""
+
+include {
+    Cycas
+    Cyclotron
+    Cygnus
+    CygnusPrimed
+    TideHunter
+} from "./subworkflows"
+
+/*
+========================================================================================
+    Workflow
+========================================================================================
+*/
+workflow {
+    log.info """Cyclomics consensus pipeline started"""
+
+    // Process inputs:
+    // add the trailing slash if its missing 
+    if (params.read_folder.endsWith("/")){
+        read_pattern = "${params.read_folder}${params.read_pattern}"
+    }
+    else {
+        read_pattern = "${params.read_folder}/${params.read_pattern}"
+    }
+    read_dir_ch = Channel.fromPath( params.read_folder, type: 'dir', checkIfExists: true)
+    read_fastq = Channel.fromPath(read_pattern, checkIfExists: true)
+
+
+    // Based on the selected method collect the other inputs and start pipelines.
+    if (params.consensus_method == "cycas") {
+        log.info """Cycas consensus generation method selected."""
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        reference = Channel.fromPath(params.reference, checkIfExists: true)
+        Cycas(read_dir_ch, backbone, reference)
+    }
+    else if (params.consensus_method == "Cyclotron") {
+        log.info """Cyclotron consensus generation method selected."""
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        Cyclotron(read_dir_ch, backbone)
+    }
+    else if (params.consensus_method == "Cygnus") {
+        log.info """Cygnus consensus generation method selected."""
+        Cygnus(read_dir_ch)
+    }
+    else if (params.consensus_method == "Cygnus_primed") {
+        log.info """Cygnus_primed consensus generation method selected with primer rotation."""
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        CygnusPrimed(read_dir_ch, backbone)
+    }
+    else if (params.consensus_method == "tidehunter") {
+        log.info """TideHunter consensus generation method selected."""
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        TideHunter(read_dir_ch, backbone)
+    }
+}
