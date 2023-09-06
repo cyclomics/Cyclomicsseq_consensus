@@ -103,33 +103,43 @@ workflow {
         read_pattern = "${params.read_folder}/${params.read_pattern}"
     }
     read_dir_ch = Channel.fromPath( params.read_folder, type: 'dir', checkIfExists: true)
-    read_fastq = Channel.fromPath(read_pattern, checkIfExists: true)
-
+    
+    // Create an item where we have the path and the sample ID.
+    //  If the path is a directory with fastq's in it directly,
+    // The sample ID will be that directory name. eg. fastq_pass/ could be the sample ID.
+    // Alternatively, the sample ID could be barcode01/barcode02 etc.
+    read_fastq = Channel.fromPath(read_pattern, checkIfExists: true) \
+        | map(x -> [x.Parent.simpleName, x.simpleName,x])
+    
 
     // Based on the selected method collect the other inputs and start pipelines.
     if (params.consensus_method == "cycas") {
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
-        Cycas(read_dir_ch, backbone, reference)
+        // Cycas(read_dir_ch, backbone, reference)
+        log.warn """Please run the default implementation of cyclomicsseq. \n\n exitting....."""
     }
     else if (params.consensus_method == "Cyclotron") {
         log.info """Cyclotron consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        Cyclotron(read_dir_ch, backbone)
+        Cyclotron(read_fastq, backbone)
     }
     else if (params.consensus_method == "Cygnus") {
         log.info """Cygnus consensus generation method selected."""
-        Cygnus(read_dir_ch)
+        Cygnus(read_fastq)
     }
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        CygnusPrimed(read_dir_ch, backbone)
+        CygnusPrimed(read_fastq, backbone)
     }
     else if (params.consensus_method == "tidehunter") {
         log.info """TideHunter consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        TideHunter(read_dir_ch, backbone)
+        TideHunter(read_fastq, backbone)
+    }
+    else {
+        log.warn "Unknown consensus generation method selected"
     }
 }
