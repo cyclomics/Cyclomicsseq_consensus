@@ -6,6 +6,17 @@ include {
     RotateBySequence
 } from "./processes"
 
+// include {
+//     Extract5PrimeFasta
+// } from "./nextflow_utils/parse_convert/modules/seqkit"
+
+include {
+    Extract5PrimeFasta
+    Extract3PrimeRemainderFasta
+    Cut5P3PAdapter
+ } from "./nextflow_utils/sequence_analysis/modules/cutadapt" 
+
+
 workflow Cycas {
     take:
         read_fastqs
@@ -28,16 +39,16 @@ workflow Cyclotron {
     emit:
         consensus
     main:
+        length_prof = 15
         log.info """Cyclotron subworkflow pipeline started"""
-        // backbone.view()
+
         pre_consensus_array = read_fastqs.combine(backbone)
-        // pre_consensus_array.view()
-        consensus = RunCyclotronConsensus(pre_consensus_array)
-        // if (params.dev_mode) {
-            // backbone.view()
-            // pre_consensus_array.first().view()
-            // consensus.first().view()
-        // }
+        consensus_with_bb = RunCyclotronConsensus(pre_consensus_array)
+
+        backbone_seq_5p = Extract5PrimeFasta(backbone, length_prof)
+        backbone_seq_3p = Extract3PrimeRemainderFasta(backbone, length_prof)
+
+        consensus = Cut5P3PAdapter(consensus_with_bb, backbone_seq_5p, backbone_seq_3p)
 }
 
 

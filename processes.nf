@@ -33,7 +33,7 @@ process RotateBySequence{
 }
 
 process RunCyclotronConsensus{
-    publishDir "${params.output_dir}/${sample}", mode: 'move'
+    publishDir "${params.output_dir}/${sample}", mode: 'copy'
     input:
         tuple val(sample), val(ID), path(fq), path(backbone)
     output:
