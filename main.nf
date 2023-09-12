@@ -20,9 +20,10 @@ params.read_folder             = ""
 params.read_pattern               = "**.{fq,fastq,fq.gz,fastq.gz}"
 params.sequencing_summary_path = "${projectDir}/sequencing_summary*.txt"
 params.backbone                   = "BBCS"
-
-params.reference = ""
+// Backbone file is used for custom backbones.
+params.backbone_file  = ""
 // reference indexes are expected to be in reference folder
+params.reference = ""
 params.output_dir = "$HOME/Data/CyclomicsSeq"
 
 
@@ -132,7 +133,7 @@ workflow {
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        CygnusPrimed(read_fastq, backbone)
+        CygnusPrimed(read_fastq, backbone, backbone)
     }
     else if (params.consensus_method == "tidehunter") {
         log.info """TideHunter consensus generation method selected."""
