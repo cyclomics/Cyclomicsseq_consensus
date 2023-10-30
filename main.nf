@@ -25,6 +25,7 @@ params.backbone_file  = ""
 // reference indexes are expected to be in reference folder
 params.reference = ""
 params.output_dir = "$HOME/Data/CyclomicsSeq"
+params.backbone_barcode = false
 
 
 // method selection
@@ -41,6 +42,12 @@ else if (params.backbone == "BB41T") {
 }
 else if (params.backbone == "BB42") {
     backbone_file = "$projectDir/backbones/BB42.fasta"
+}
+else if (params.backbone == "BB43") {
+    backbone_file = "$projectDir/backbones/BB43.fasta"
+}
+else if (params.backbone == "BB43b") {
+    backbone_file = "$projectDir/backbones/BB43b.fasta"
 }
 else if (params.backbone == "BB22") {
     backbone_file = "$projectDir/backbones/BB22.fasta"
@@ -133,7 +140,7 @@ workflow {
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        CygnusPrimed(read_fastq, backbone, backbone)
+        CygnusPrimed(read_fastq, backbone, backbone, params.backbone_barcode)
     }
     else if (params.consensus_method == "tidehunter") {
         log.info """TideHunter consensus generation method selected."""
@@ -143,4 +150,6 @@ workflow {
     else {
         log.warn "Unknown consensus generation method selected"
     }
+
+    
 }

@@ -8,6 +8,8 @@ include {
     Cut3PAdapter
     Cut5PAdapter
     Cut5P3PFullBackbone
+    DemuxBackboneBarcodes
+    RegroupReads
 } from "./processes"
 
 // include {
@@ -79,6 +81,7 @@ workflow CygnusPrimed {
         read_fastqs
         primers
         adapter
+        backbone_demux
 
     emit:
         consensus
@@ -94,15 +97,46 @@ workflow CygnusPrimed {
         // pre_consensus.map{ it -> [it[1], it[2].size()]}.view()
 
         pre_consensus_combined = pre_consensus.combine(primers)
+        // pre_consensus_combined.view()
         consensus_rotated = RotateBySequence(pre_consensus_combined)
+        // consensus_rotated.view()
+
+        if (backbone_demux == true) {
+            log.info """Cygnus Primed: Detecting barcodes in Backbone"""
+
+            demuxed = DemuxBackboneBarcodes(consensus_rotated.combine(adapter))
+
+            // Demux makes files per barcode found, so we need to transform to a tuple ber barcode
+            // transform the tuple structure
+            demux_flapmapped = demuxed.map {it -> it[2].collect {fq -> [it[0], it[1], fq]}}.flatMap()
+            // rename the ID to the barcode, move the old ID to the sample column
+            demux_reIDed = demux_flapmapped.map {it -> [it[2].simpleName, it[0], it[2]]}
+            // demux_flapmapped.view()
+            // demux_reIDed.view()
+            per_barcode = demux_reIDed.groupTuple(by:0)
+            // per_barcode.view()
+            
+            per_barcode_merged = RegroupReads(per_barcode)
+
+            trimmable = per_barcode_merged
+        }
+        else {
+            log.info """Cygnus Primed: Keeping folder barcode structure"""
+
+            trimmable = consensus_rotated
+        }
+        // println("DEV: Trimmable")
+        // trimmable.view()
 
         adapter_sequence = ExtractFullFasta(adapter).first()
-        // consensus_trimmed = Cut5PAdapter(consensus_rotated, adapter_sequence)
-        consensus_trimmed = Cut5P3PFullBackbone(consensus_rotated, adapter_sequence)
+        consensus_trimmed = Cut5P3PFullBackbone(trimmable, adapter_sequence)
 
+        log.info """Cygnus Primed: Removing empty files."""
         // consensus_trimmed = consensus_trimmed.filter{ it -> it[2].size() >1024}
 
-        consensus = ""
+        consensus = consensus_trimmed
+        // adapter.view()
+        // consensus_trimmed.combine(adapter).view()
 }
 
 workflow TideHunter {

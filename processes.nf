@@ -40,7 +40,6 @@ process RunCyclotronConsensus{
         tuple val(sample), val(ID), path("*.fastq")
     script:
         """
-        echo hello world
         python3 $params.cyclotron_location $fq $backbone ${fq.simpleName}_consenus.fastq
         """
 }
@@ -102,5 +101,40 @@ process Cut5P3PFullBackbone {
     script:
     """
     cutadapt -g $sequence -a $sequence --revcomp -m 5 -o ${fq.simpleName}_cutadapt.fq.gz $fq
+    """
+}
+
+process DemuxBackboneBarcodes {
+    // publishDir "${params.output_dir}/backbone_demuxed/${sample}", mode: 'copy'
+
+    input:
+        tuple val(ID), val(sample), path(fq), path(backbone_fa)
+
+    output:
+         tuple val(ID), val(sample), path("backbone_demux/*.fastq")
+
+    script:
+    """
+    mkdir backbone_demux
+    detect_backbone_barcode.py $backbone_fa $fq backbone_demux
+    for i in \$(ls backbone_demux); do
+        mv backbone_demux/\$i backbone_demux/\$(basename \$i).${ID}_${sample}.fastq
+    done
+    """
+
+}
+
+process RegroupReads {
+    publishDir "${params.output_dir}/demux_regroup/${ID}", mode: 'copy'
+
+    input:
+        tuple val(ID), val(sample), path(fq)
+
+    output:
+         tuple val(ID), val(sample), path("*.fastq")
+
+    script:
+    """
+    seqkit seq **.fastq > ${ID}.fastq
     """
 }
