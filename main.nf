@@ -20,6 +20,8 @@ params.read_folder             = ""
 params.read_pattern               = "**.{fq,fastq,fq.gz,fastq.gz}"
 params.sequencing_summary_path = "${projectDir}/sequencing_summary*.txt"
 params.backbone                   = "BBCS"
+params.primer_file                = ""
+
 // Backbone file is used for custom backbones.
 params.backbone_file  = ""
 // reference indexes are expected to be in reference folder
@@ -119,7 +121,6 @@ workflow {
     read_fastq = Channel.fromPath(read_pattern, checkIfExists: true) \
         | map(x -> [x.Parent.simpleName, x.simpleName,x])
     
-
     // Based on the selected method collect the other inputs and start pipelines.
     if (params.consensus_method == "cycas") {
         log.info """Cycas consensus generation method selected."""
@@ -139,8 +140,11 @@ workflow {
     }
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
+        log.info """Rotate by primer, demux on barcode."""
+        
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        CygnusPrimed(read_fastq, backbone, backbone, params.backbone_barcode)
+        primer = Channel.fromPath(params.primer_file, checkIfExists: true)
+        CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
     }
     else if (params.consensus_method == "tidehunter") {
         log.info """TideHunter consensus generation method selected."""
