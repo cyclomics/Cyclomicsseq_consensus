@@ -72,8 +72,7 @@ workflow Cygnus {
         consensus
     main:
         log.info """Cygnus subworkflow pipeline started"""
-        consensus = ""
-        RunCygnusConsensus(read_fastqs)
+        consensus = RunCygnusConsensus(read_fastqs)
 }
 
 workflow CygnusPrimed {
@@ -131,7 +130,7 @@ workflow CygnusPrimed {
         adapter_sequence = ExtractFullFasta(adapter).first()
         consensus_trimmed = Cut5P3PFullBackbone(trimmable, adapter_sequence)
 
-        log.info """Cygnus Primed: Removing empty files."""
+        // log.info """Cygnus Primed: Removing empty files."""
         // consensus_trimmed = consensus_trimmed.filter{ it -> it[2].size() >1024}
 
         consensus = consensus_trimmed
@@ -151,4 +150,24 @@ workflow TideHunter {
 
         consensus = ""
         exit(1)
+}
+
+workflow CygnusAligned {
+    take:
+        read_fastqs
+        primers
+        adapter
+        backbone_demux
+
+    emit:
+        consensus
+    main:
+        log.info """Cygnus Alignment rotation subworkflow pipeline started"""
+        
+        consensus = "ABC"
+        exit(1)
+        // TODO:
+        // 1. Cygnus
+        // 2. Align 
+        // 3. Rotate back to fq
 }

@@ -31,7 +31,9 @@ params.backbone_barcode = false
 
 
 // method selection
-params.consensus_method        = "cycas"
+params.summarize_input  = true
+params.summarize_output  = true
+params.consensus_method = "cycas"
 
 // Pipeline performance metrics
 params.min_repeat_count = 3
@@ -67,7 +69,8 @@ else {
     backbone_file = params.backbone_file
 }
 
-
+log.debug "parameters obj : ${params}"
+log.debug "workflow object: ${workflow}"
 // ### Printout for user
 log.info """
     ===================================================
@@ -94,13 +97,20 @@ include {
     Cygnus
     CygnusPrimed
     TideHunter
+    CygnusAligned
 } from "./subworkflows"
+
+include {
+    SummerizeReadsStdout as SummarizePerSampleID_in
+    SummerizeReadsStdout as SummarizePerSampleID_out
+} from "./nextflow_utils/reporting/modules/seqkit"
 
 /*
 ========================================================================================
     Workflow
 ========================================================================================
 */
+
 workflow {
     log.info """Cyclomics consensus pipeline started"""
 
@@ -112,15 +122,21 @@ workflow {
     else {
         read_pattern = "${params.read_folder}/${params.read_pattern}"
     }
+    log.debug "Processing files following ${read_pattern}"
     read_dir_ch = Channel.fromPath( params.read_folder, type: 'dir', checkIfExists: true)
-    
-    // Create an item where we have the path and the sample ID.
+
+    // Create an item where we have the path and the sample ID and the file ID.
     //  If the path is a directory with fastq's in it directly,
     // The sample ID will be that directory name. eg. fastq_pass/ could be the sample ID.
     // Alternatively, the sample ID could be barcode01/barcode02 etc.
     read_fastq = Channel.fromPath(read_pattern, checkIfExists: true) \
         | map(x -> [x.Parent.simpleName, x.simpleName,x])
-    
+
+    if (params.summarize_input){
+        summary = SummarizePerSampleID_in(read_fastq.groupTuple())
+        summary.view{x -> "\nSummary per sample of the input:\n $x"}
+    }
+
     // Based on the selected method collect the other inputs and start pipelines.
     if (params.consensus_method == "cycas") {
         log.info """Cycas consensus generation method selected."""
@@ -136,7 +152,7 @@ workflow {
     }
     else if (params.consensus_method == "Cygnus") {
         log.info """Cygnus consensus generation method selected."""
-        Cygnus(read_fastq)
+        consensus = Cygnus(read_fastq)
     }
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
@@ -144,7 +160,12 @@ workflow {
         
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         primer = Channel.fromPath(params.primer_file, checkIfExists: true)
-        CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
+        consensus = CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
+    }
+    else if (params.consensus_method == "Cygnus_aligned") {
+        log.info """Cygnus_aligned consensus generation method selected."""        
+        reference = Channel.fromPath(params.primer_file, checkIfExists: true)
+        consensus = CygnusAligned(read_fastq, reference)
     }
     else if (params.consensus_method == "tidehunter") {
         log.info """TideHunter consensus generation method selected."""
@@ -155,5 +176,9 @@ workflow {
         log.warn "Unknown consensus generation method selected"
     }
 
-    
+    // Sumarize output consensus reads
+    if (params.summarize_output){
+        summary = SummarizePerSampleID_out(consensus.groupTuple())
+        summary.view{x -> "\nSummary per sample of the output:\n $x"}
+    }
 }
