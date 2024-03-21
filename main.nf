@@ -99,11 +99,17 @@ include {
 include {
     Cycas
 } from "./nextflow_utils/consensus/modules/cycas"
+
 include {
     CygnusConsensus
     CygnusAlignedConsensus
     CygnusPrimedConsensus
 } from "./nextflow_utils/consensus/subworkflows"
+
+include {
+    PrepareGenome
+} from "./nextflow_utils/parse_convert/subworkflows"
+
 include {
     SummerizeReadsStdout as SummarizePerSampleID_in
     SummerizeReadsStdout as SummarizePerSampleID_out
@@ -167,9 +173,13 @@ workflow {
         consensus = CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
     }
     else if (params.consensus_method == "Cygnus_aligned") {
-        log.info """Cygnus_aligned consensus generation method selected."""        
+        log.info """Cygnus_aligned consensus generation method selected."""
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.primer_file, checkIfExists: true)
-        consensus = CygnusAlignedConsensus(read_fastq, reference)
+        PrepareGenome(reference_genome, params.reference, backbone)
+        // .collect() to turn into repeating value channel.
+        reference_mmi = PrepareGenome.out.mmi.collect()
+        consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
     }
     else if (params.consensus_method == "Tidehunter") {
         log.info """TideHunter consensus generation method selected."""
