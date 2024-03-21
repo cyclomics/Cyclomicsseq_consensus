@@ -33,7 +33,7 @@ params.backbone_barcode = false
 // method selection
 params.summarize_input  = true
 params.summarize_output  = true
-params.consensus_method = "cycas"
+params.consensus_method = "Cycas"
 
 // Pipeline performance metrics
 params.min_repeat_count = 3
@@ -92,14 +92,18 @@ log.info """
 """
 
 include {
-    Cycas
     Cyclotron
-    Cygnus
-    CygnusPrimed
     TideHunter
-    CygnusAligned
 } from "./subworkflows"
 
+include {
+    Cycas
+} from "./nextflow_utils/consensus/modules/cycas"
+include {
+    CygnusConsensus
+    CygnusAlignedConsensus
+    CygnusPrimedConsensus
+} from "./nextflow_utils/consensus/subworkflows"
 include {
     SummerizeReadsStdout as SummarizePerSampleID_in
     SummerizeReadsStdout as SummarizePerSampleID_out
@@ -138,7 +142,7 @@ workflow {
     }
 
     // Based on the selected method collect the other inputs and start pipelines.
-    if (params.consensus_method == "cycas") {
+    if (params.consensus_method == "Cycas") {
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
@@ -165,9 +169,9 @@ workflow {
     else if (params.consensus_method == "Cygnus_aligned") {
         log.info """Cygnus_aligned consensus generation method selected."""        
         reference = Channel.fromPath(params.primer_file, checkIfExists: true)
-        consensus = CygnusAligned(read_fastq, reference)
+        consensus = CygnusAlignedConsensus(read_fastq, reference)
     }
-    else if (params.consensus_method == "tidehunter") {
+    else if (params.consensus_method == "Tidehunter") {
         log.info """TideHunter consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         TideHunter(read_fastq, backbone)
