@@ -88,7 +88,8 @@ log.info """
         consensus_method        : $params.consensus_method
 
     Other:
-        tbd
+        Version  : $workflow.commitId
+        Revision : $workflow.revision
 """
 
 include {
@@ -197,4 +198,8 @@ workflow {
         summary = SummarizePerSampleID_out(consensus.groupTuple())
         summary.view{x -> "\nSummary per sample of the output:\n $x"}
     }
+}
+
+workflow.onComplete{
+    log.info ("\nDone. The results are available in following folder --> $params.output_dir\n")
 }
