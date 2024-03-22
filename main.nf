@@ -174,11 +174,13 @@ workflow {
     }
     else if (params.consensus_method == "Cygnus_aligned") {
         log.info """Cygnus_aligned consensus generation method selected."""
+        log.info """We will align against the provided primer."""
+
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.primer_file, checkIfExists: true)
-        PrepareGenome(reference_genome, params.reference, backbone)
+        PrepareGenome(reference, params.reference, backbone)
         // .collect() to turn into repeating value channel.
-        reference_mmi = PrepareGenome.out.mmi.collect()
+        reference_mmi = PrepareGenome.out.mmi_combi.collect()
         consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
     }
     else if (params.consensus_method == "Tidehunter") {
