@@ -33,7 +33,7 @@ params.backbone_barcode = false
 // method selection
 params.summarize_input  = true
 params.summarize_output  = true
-params.consensus_method = "cycas"
+params.consensus_method = "Cycas"
 
 // Pipeline performance metrics
 params.min_repeat_count = 3
@@ -88,17 +88,28 @@ log.info """
         consensus_method        : $params.consensus_method
 
     Other:
-        tbd
+        Version  : $workflow.commitId
+        Revision : $workflow.revision
 """
 
 include {
-    Cycas
     Cyclotron
-    Cygnus
-    CygnusPrimed
     TideHunter
-    CygnusAligned
 } from "./subworkflows"
+
+include {
+    Cycas
+} from "./nextflow_utils/consensus/modules/cycas"
+
+include {
+    CygnusConsensus
+    CygnusAlignedConsensus
+    CygnusPrimedConsensus
+} from "./nextflow_utils/consensus/subworkflows"
+
+include {
+    PrepareGenome
+} from "./nextflow_utils/parse_convert/subworkflows"
 
 include {
     SummerizeReadsStdout as SummarizePerSampleID_in
@@ -138,7 +149,7 @@ workflow {
     }
 
     // Based on the selected method collect the other inputs and start pipelines.
-    if (params.consensus_method == "cycas") {
+    if (params.consensus_method == "Cycas") {
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
@@ -163,11 +174,17 @@ workflow {
         consensus = CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
     }
     else if (params.consensus_method == "Cygnus_aligned") {
-        log.info """Cygnus_aligned consensus generation method selected."""        
+        log.info """Cygnus_aligned consensus generation method selected."""
+        log.info """We will align against the provided primer."""
+
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.primer_file, checkIfExists: true)
-        consensus = CygnusAligned(read_fastq, reference)
+        PrepareGenome(reference, params.reference, backbone)
+        // .collect() to turn into repeating value channel.
+        reference_mmi = PrepareGenome.out.mmi_combi.collect()
+        consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
     }
-    else if (params.consensus_method == "tidehunter") {
+    else if (params.consensus_method == "Tidehunter") {
         log.info """TideHunter consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         TideHunter(read_fastq, backbone)
@@ -181,4 +198,8 @@ workflow {
         summary = SummarizePerSampleID_out(consensus.groupTuple())
         summary.view{x -> "\nSummary per sample of the output:\n $x"}
     }
+}
+
+workflow.onComplete{
+    log.info ("\nDone. The results are available in following folder --> $params.output_dir\n")
 }
