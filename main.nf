@@ -168,10 +168,13 @@ workflow {
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
-        MergeFasta(reference, backbone)
-        contigs = MergeFasta.out.first()
-        CycasConsensus(read_fastq, contigs)
+        PrepareGenome(reference, params.reference, backbone)
+        // .collect() to turn into repeating value channel.
+        reference_mmi = PrepareGenome.out.mmi_combi.collect()
+        
+        CycasConsensus(read_fastq, reference_mmi)
         consensus = CycasConsensus.out
+        // Drop the metadata jsons for now
         consensus = consensus.map{ it -> it.take(3)}
     }
     else if (params.consensus_method == "Cyclotron") {
@@ -179,10 +182,12 @@ workflow {
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         consensus = Cyclotron(read_fastq, backbone)
     }
+
     else if (params.consensus_method == "Cygnus") {
         log.info """Cygnus consensus generation method selected."""
         consensus = Cygnus(read_fastq)
     }
+    
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
         log.info """Rotate by primer, demux on barcode."""
@@ -191,24 +196,38 @@ workflow {
         primer = Channel.fromPath(params.primer_file, checkIfExists: true)
         consensus = CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
     }
+
     else if (params.consensus_method == "Cygnus_aligned") {
         log.info """Cygnus_aligned consensus generation method selected."""
         log.info """We will align against the provided primer."""
-
+        if (params.reference == "" || backbone_file == "") {
+            log.error \
+            """Please provide reference genome and backbone file for Cygnus)aligned method.
+            reference genome can be provided with --reference and was: '${params.reference}' 
+            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        reference = Channel.fromPath(params.primer_file, checkIfExists: true)
+        reference = Channel.fromPath(params.reference, checkIfExists: true)
         PrepareGenome(reference, params.reference, backbone)
         // .collect() to turn into repeating value channel.
         reference_mmi = PrepareGenome.out.mmi_combi.collect()
         consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
     }
+
     else if (params.consensus_method == "Tidehunter") {
         log.info """TideHunter consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         TideHunter(read_fastq, backbone)
     }
+    
     else {
         log.warn "Unknown consensus generation method selected"
+        sleep(200)
+        exit 1
     }
 
     // Sumarize output consensus reads
