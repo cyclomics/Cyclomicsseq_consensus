@@ -2,3 +2,5 @@
 test_*
 .nf-test*
 work*
+**.fastq.gz
+**.fasta

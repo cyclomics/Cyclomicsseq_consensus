@@ -19,7 +19,7 @@ nextflow.enable.dsl = 2
 params.read_folder             = ""
 params.read_pattern               = "**.{fq,fastq,fq.gz,fastq.gz}"
 params.sequencing_summary_path = "${projectDir}/sequencing_summary*.txt"
-params.backbone                   = "BBCS"
+params.backbone                   = ""
 params.primer_file                = ""
 
 // Backbone file is used for custom backbones.
@@ -97,11 +97,12 @@ include {
     TideHunter
 } from "./subworkflows"
 
-include {
-    Cycas
-} from "./nextflow_utils/consensus/modules/cycas"
+// include {
+//     Cycas
+// } from "./nextflow_utils/consensus/modules/cycas"
 
 include {
+    CycasConsensus
     CygnusConsensus
     CygnusAlignedConsensus
     CygnusPrimedConsensus
@@ -110,6 +111,10 @@ include {
 include {
     PrepareGenome
 } from "./nextflow_utils/parse_convert/subworkflows"
+
+include {
+    MergeFasta
+} from "./nextflow_utils/parse_convert/modules/seqkit"
 
 include {
     SummerizeReadsStdout as SummarizePerSampleID_in
@@ -133,8 +138,6 @@ workflow {
     else {
         read_pattern = "${params.read_folder}/${params.read_pattern}"
     }
-    log.debug "Processing files following ${read_pattern}"
-    read_dir_ch = Channel.fromPath( params.read_folder, type: 'dir', checkIfExists: true)
 
     // Create an item where we have the path and the sample ID and the file ID.
     //  If the path is a directory with fastq's in it directly,
@@ -144,22 +147,37 @@ workflow {
         | map(x -> [x.Parent.simpleName, x.simpleName,x])
 
     if (params.summarize_input){
-        summary = SummarizePerSampleID_in(read_fastq.groupTuple())
-        summary.view{x -> "\nSummary per sample of the input:\n $x"}
+        summary_in = SummarizePerSampleID_in(read_fastq.groupTuple())
+        summary_in.subscribe { x ->
+            log.info "\nSummary per sample of the input:\n $x"
+        }
     }
 
     // Based on the selected method collect the other inputs and start pipelines.
     if (params.consensus_method == "Cycas") {
+        if (params.reference == "" || backbone_file == "") {
+            log.error \
+            """Please provide reference genome and backbone file for Cycas method.
+            reference genome can be provided with --reference and was: '${params.reference}' 
+            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
-        // Cycas(read_dir_ch, backbone, reference)
-        log.warn """Please run the default implementation of cyclomicsseq. \n\n exitting....."""
+        MergeFasta(reference, backbone)
+        contigs = MergeFasta.out.first()
+        CycasConsensus(read_fastq, contigs)
+        consensus = CycasConsensus.out
+        consensus = consensus.map{ it -> it.take(3)}
     }
     else if (params.consensus_method == "Cyclotron") {
         log.info """Cyclotron consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        Cyclotron(read_fastq, backbone)
+        consensus = Cyclotron(read_fastq, backbone)
     }
     else if (params.consensus_method == "Cygnus") {
         log.info """Cygnus consensus generation method selected."""
@@ -195,8 +213,10 @@ workflow {
 
     // Sumarize output consensus reads
     if (params.summarize_output){
-        summary = SummarizePerSampleID_out(consensus.groupTuple())
-        summary.view{x -> "\nSummary per sample of the output:\n $x"}
+        summary_out = SummarizePerSampleID_out(consensus.groupTuple())
+        summary_out.subscribe { x ->
+            log.info "\nSummary per sample of the output:\n $x"
+        }
     }
 }
 
