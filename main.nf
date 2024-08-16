@@ -113,6 +113,11 @@ include {
 } from "./nextflow_utils/parse_convert/subworkflows"
 
 include {
+    Minimap2Index
+    Minimap2AlignByID
+} from "./nextflow_utils/parse_convert/modules/minimap"
+
+include {
     MergeFasta
 } from "./nextflow_utils/parse_convert/modules/seqkit"
 
@@ -145,11 +150,12 @@ workflow {
     // Alternatively, the sample ID could be barcode01/barcode02 etc.
     read_fastq = Channel.fromPath(read_pattern, checkIfExists: true) \
         | map(x -> [x.Parent.simpleName, x.simpleName,x])
+    read_fastq.dump(tag: "input-data")
 
     if (params.summarize_input){
         summary_in = SummarizePerSampleID_in(read_fastq.groupTuple())
         summary_in.subscribe { x ->
-            log.info "\nSummary per sample of the input:\n $x"
+            log.info "\nSummary per sample of the input:\n$x"
         }
     }
 
@@ -200,7 +206,8 @@ workflow {
             exit 1
         }
         primer = Channel.fromPath(params.primer_file, checkIfExists: true)
-        primer = primer.first()
+        // We need a value channel to repeat the usage.
+        primer = primer.collect()
         CygnusPrimedConsensus(read_fastq, primer)
         consensus = CygnusPrimedConsensus.out
     }
@@ -238,14 +245,27 @@ workflow {
         exit 1
     }
 
+    consensus.dump()
     // Sumarize output consensus reads
     if (params.summarize_output){
         summary_out = SummarizePerSampleID_out(consensus.groupTuple())
         summary_out.subscribe { x ->
-            log.info "\nSummary per sample of the output:\n $x"
+            log.info "\nSummary per sample of the output:\n$x"
         }
     }
+
+    if (params.reference != ""){
+        log.warn "Aligning to provided reference."
+        sleep(200)
+        
+        reference = Channel.fromPath(params.reference)
+        Minimap2Index(reference)
+        reference_mmi_final = Minimap2Index.out
+        // If we have a reference, we then might as well align it all.
+        Minimap2AlignByID(consensus.groupTuple(), reference_mmi_final)
+    }
 }
+
 
 workflow.onComplete{
     log.info ("\nDone. The results are available in following folder --> $params.output_dir\n")
