@@ -190,11 +190,19 @@ workflow {
     
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
-        log.info """Rotate by primer, demux on barcode."""
-        
-        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        if (params.primer_file == ""){
+            log.error \
+            """Please provide a primer file for Cygnus_primed method.
+            primer file can be provided with --primer_file and was: '${params.primer_file}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
         primer = Channel.fromPath(params.primer_file, checkIfExists: true)
-        consensus = CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
+        primer = primer.first()
+        CygnusPrimedConsensus(read_fastq, primer)
+        consensus = CygnusPrimedConsensus.out
     }
 
     else if (params.consensus_method == "Cygnus_aligned") {
@@ -223,7 +231,7 @@ workflow {
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         TideHunter(read_fastq, backbone)
     }
-    
+
     else {
         log.warn "Unknown consensus generation method selected"
         sleep(200)
