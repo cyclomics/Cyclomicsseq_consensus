@@ -114,7 +114,7 @@ include {
 
 include {
     Minimap2Index
-    Minimap2AlignByID
+    Minimap2Align as Minimap2AlignByID
 } from "./nextflow_utils/parse_convert/modules/minimap"
 
 include {
@@ -187,11 +187,13 @@ workflow {
         log.info """Cyclotron consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         consensus = Cyclotron(read_fastq, backbone)
+
     }
 
     else if (params.consensus_method == "Cygnus") {
         log.info """Cygnus consensus generation method selected."""
         consensus = Cygnus(read_fastq)
+
     }
     
     else if (params.consensus_method == "Cygnus_primed") {
@@ -210,6 +212,8 @@ workflow {
         primer = primer.collect()
         CygnusPrimedConsensus(read_fastq, primer)
         consensus = CygnusPrimedConsensus.out
+        consensus.dump()
+        // consensus.view()
     }
 
     else if (params.consensus_method == "Cygnus_aligned") {
@@ -245,8 +249,11 @@ workflow {
         exit 1
     }
 
-    consensus.dump()
-    // Sumarize output consensus reads
+    // Publish the consensus fastqs grouped in folders by their sample id
+    consensus.map { it ->
+        it[2].copyTo("${params.output_dir}/results/${it[0]}/${it[2].name}")
+        }
+    
     if (params.summarize_output){
         summary_out = SummarizePerSampleID_out(consensus.groupTuple())
         summary_out.subscribe { x ->
@@ -258,11 +265,18 @@ workflow {
         log.warn "Aligning to provided reference."
         sleep(200)
         
+        // If we have a reference, we then might as well align it all per sample ID.
         reference = Channel.fromPath(params.reference)
         Minimap2Index(reference)
         reference_mmi_final = Minimap2Index.out
-        // If we have a reference, we then might as well align it all.
-        Minimap2AlignByID(consensus.groupTuple(), reference_mmi_final)
+        consensus_by_id = consensus.groupTuple().map{ it -> [it[0], it[0], it[2]]}
+        consensus_by_id.dump(tag: 'consensus-pre-alignment')
+        Minimap2AlignByID(consensus_by_id, reference_mmi_final)
+        consensus_aligned = Minimap2AlignByID.out
+        // Publish the aligned consensus, but as a single file
+        consensus_aligned.map { it ->
+        it[2].copyTo("${params.output_dir}/results_aligned/${it[2].name}")    // Copy the file to the target directory
+        }
     }
 }
 
