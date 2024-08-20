@@ -45,176 +45,73 @@
         },
         "read_pattern":{
           "type": "string",
-          "description": "Search pattern for fastq files.",
+          "description": "Search pattern for fastq files in the read_folder.",
           "default": "**.{fq,fastq,fq.gz,fastq.gz}"
+        },
+        "backbone": {
+          "type": "string",
+          "description": "Backbone used in the CyclomicsSeq protocol.",
+          "help_text": "ID of the backbone used in the lab, If set to custom please set the backbone_file option  under advanced user options to a fasta file with the sequence of the custom backbone as the only input where the name starts with `BB`.",
+          "default": "",
+          "enum": [
+            "BB22",
+            "BB25",
+            "BBCS",
+            "BBCR",
+            "BB41",
+            "BB42",
+            "BB43",
+            "Custom*",
+            ""
+          ]
+        },
+        "primer_file": {
+          "type": "string",
+          "format": "file-path",
+          "description": "File of primers used for rotating to the start of the consensus read.",
+          "help_text": "Please note that the primers need to be shorter than the read for succesfull rotation to the start.",
+          "default": ""
+        },
+        "reference": {
+          "type": "string",
+          "format": "file-path",
+          "description": "Reference genome of the sequenced sample.",
+          "help_text": "reference genome of the sequenced material in fasta format. Will be used in several stages of the workflow, depending on consensus algorithm.",
+          "default": ""
         },
         "summarize_input": {
           "type": "boolean",
-          "description": "When enabled, Print a summary per sample ID ",
+          "description": "When enabled, Print a summary per sample ID for the input fastq files. ",
           "help_text": "the Sample id is the name of the folder in which the fastq is located.",
           "default": true
         },
         "summarize_output": {
           "type": "boolean",
-          "description": "When enabled, Print a summary per sample ID ",
+          "description": "When enabled, Print a summary per sample ID for the output fastq files.",
           "help_text": "the Sample id is the name of the folder in which the fastq is located.",
           "default": true
         }
       },
       "required": ["read_folder"]
     },
-    "cycas_options": {
-      "title": "Cycas Settings",
+    "advanced_user_options": {
+      "title": "Advanced user options",
       "type": "object",
-      "description": "Setting applicable to Cycas.",
+      "description": "More advanced user options.",
       "default": "",
       "properties": {
-        "backbone": {
-          "type": "string",
-          "description": "Backbone used in the CyclomicsSeq protocol.",
-          "help_text": "ID of the backbone used in the lab, If set to custom please set the backbone_file option  under advanced user options to a fasta file with the sequence of the custom backbone as the only input where the name starts with `BB`.",
-          "default": "BBCS",
-          "enum": [
-            "BB22",
-            "BB25",
-            "BBCS",
-            "BBCR",
-            "BB41",
-            "BB42",
-            "BB43",
-            "Custom*"
-          ]
-        },
-        "reference": {
+        "backbone_file": {
           "type": "string",
           "format": "file-path",
-          "description": "Reference genome of the sequenced sample. Ideally bwa indexed prior to the run.",
-          "help_text": "reference genome of the sequenced material in fasta format. Will be used in several stages of the workflow. \n We suggest GRCh38.p14, since this has been tested to work with the Effect prediction API. Please see the readme tab for instructions to obtain this reference genome.",
+          "description": "Path for a custom backbone, dont forget to set backbone to custom",
+          "help_text": "Usefull for testing backbone designs witout the need for a pipeline update.",
           "default": ""
-        }
-      }
-    },
-    "cyclotron_options": {
-      "title": "Cyclotron Settings",
-      "type": "object",
-      "description": "Setting applicable to Cyclotron.",
-      "default": "",
-      "properties": {
-        "backbone": {
-          "type": "string",
-          "description": "Backbone used in the CyclomicsSeq protocol.",
-          "help_text": "ID of the backbone used in the lab, If set to custom please set the backbone_file option  under advanced user options to a fasta file with the sequence of the custom backbone as the only input where the name starts with `BB`.",
-          "default": "BBCS",
-          "enum": [
-            "BB22",
-            "BB25",
-            "BBCS",
-            "BBCR",
-            "BB41",
-            "BB42",
-            "BB43",
-            "Custom*"
-          ]
-        }
-      }
-    },
-    "cygnus_options": {
-      "title": "Cyclotron Settings",
-      "type": "object",
-      "description": "Setting applicable to Cyclotron.",
-      "default": "",
-      "properties": {
-        "no_settings_atm": {
-          "type": "string",
-          "description": "Dummy field.",
-          "help_text": "more items will come here later.",
-          "default": ""
-        }
-      }
-    },
-    "cygnus_primed_options": {
-      "title": "Cygnus Primed Settings",
-      "type": "object",
-      "description": "Setting applicable to Cygnus, with primer sequence based rotation.",
-      "default": "",
-      "properties": {
-        "backbone": {
-          "type": "string",
-          "description": "Backbone used in the CyclomicsSeq protocol.",
-          "help_text": "ID of the backbone used in the lab, If set to custom please set the backbone_file option  under advanced user options to a fasta file with the sequence of the custom backbone as the only input where the name starts with `BB`.",
-          "default": "BBCS",
-          "enum": [
-            "BB22",
-            "BB25",
-            "BBCS",
-            "BBCR",
-            "BB41",
-            "BB42",
-            "BB43",
-            "Custom*"
-          ]
         },
-        "primers": {
-          "type": "string",
-          "format": "file-path",
-          "description": "Fasta file containing the primers or amplicons.",
-          "help_text": "TBD.",
-          "default": ""
-        }
-      }
-    },
-    "cygnus_aligned_options": {
-      "title": "Cygnus aligned Settings",
-      "type": "object",
-      "description": "Setting applicable to Cygnus, with alignment based rotation.",
-      "default": "",
-      "properties": {
-        "backbone": {
-          "type": "string",
-          "description": "Backbone used in the CyclomicsSeq protocol.",
-          "help_text": "ID of the backbone used in the lab, If set to custom please set the backbone_file option  under advanced user options to a fasta file with the sequence of the custom backbone as the only input where the name starts with `BB`.",
-          "default": "BBCS",
-          "enum": [
-            "BB22",
-            "BB25",
-            "BBCS",
-            "BBCR",
-            "BB41",
-            "BB42",
-            "BB43",
-            "Custom*"
-          ]
-        },
-        "reference": {
-          "type": "string",
-          "format": "file-path",
-          "description": "Reference genome of the sequenced sample. Ideally bwa indexed prior to the run.",
-          "help_text": "reference genome of the sequenced material in fasta format. Will be used in several stages of the workflow. \n We suggest GRCh38.p14, since this has been tested to work with the Effect prediction API. Please see the readme tab for instructions to obtain this reference genome.",
-          "default": ""
-        }
-      }
-    },
-    "tidehunter_options": {
-      "title": "Tidehunter Primed Settings",
-      "type": "object",
-      "description": "Setting applicable to Tidehunter.",
-      "default": "",
-      "properties": {
-        "backbone": {
-          "type": "string",
-          "description": "Backbone used in the CyclomicsSeq protocol.",
-          "help_text": "ID of the backbone used in the lab, If set to custom please set the backbone_file option  under advanced user options to a fasta file with the sequence of the custom backbone as the only input where the name starts with `BB`.",
-          "default": "BBCS",
-          "enum": [
-            "BB22",
-            "BB25",
-            "BBCS",
-            "BBCR",
-            "BB41",
-            "BB42",
-            "BB43",
-            "Custom*"
-          ]
+        "skip_alignment": {
+          "type": "boolean",
+          "description": "When enabled skip the last alignment step per ID.",
+          "help_text": "the Sample id is the name of the folder in which the fastq is located.",
+          "default": false
         }
       }
     }
@@ -227,16 +124,7 @@
       "$ref": "#/definitions/input_options"
     },
     {
-      "$ref": "#/definitions/pipeline_options"
-    },
-    {
       "$ref": "#/definitions/advanced_user_options"
-    },
-    {
-      "$ref": "#/definitions/advanced_variants_validate"
-    },
-    {
-      "$ref": "#/definitions/advanced_variants_freebayes"
     }
   ]
 }
