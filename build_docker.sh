@@ -1,4 +1,4 @@
-TMP_NAME=0.1.0
+TMP_NAME=0.1.1
 
 docker build -t cyclomics/cyclomicsseq_consensus:$TMP_NAME .
 echo "Container created: cyclomics/cyclomicsseq_consensus:$TMP_NAME"
