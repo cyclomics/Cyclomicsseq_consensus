@@ -1,12 +1,3 @@
-[submodule "Rotators"]
-	path = Rotators
-	url = https://github.com/cyclomics/Rotators
 [submodule "nextflow_utils"]
 	path = nextflow_utils
 	url = https://github.com/cyclomics/nextflow_utils.git
-[submodule "Cygnus"]
-	path = Cygnus
-	url = https://github.com/cyclomics/Cygnus.git
-[submodule "Cyclotron"]
-	path = Cyclotron
-	url = https://github.com/cyclomics/Cyclotron.git

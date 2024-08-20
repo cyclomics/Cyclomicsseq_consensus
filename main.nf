@@ -19,7 +19,7 @@ nextflow.enable.dsl = 2
 params.read_folder             = ""
 params.read_pattern               = "**.{fq,fastq,fq.gz,fastq.gz}"
 params.sequencing_summary_path = "${projectDir}/sequencing_summary*.txt"
-params.backbone                   = "BBCS"
+params.backbone                   = ""
 params.primer_file                = ""
 
 // Backbone file is used for custom backbones.
@@ -97,11 +97,12 @@ include {
     TideHunter
 } from "./subworkflows"
 
-include {
-    Cycas
-} from "./nextflow_utils/consensus/modules/cycas"
+// include {
+//     Cycas
+// } from "./nextflow_utils/consensus/modules/cycas"
 
 include {
+    CycasConsensus
     CygnusConsensus
     CygnusAlignedConsensus
     CygnusPrimedConsensus
@@ -110,6 +111,15 @@ include {
 include {
     PrepareGenome
 } from "./nextflow_utils/parse_convert/subworkflows"
+
+include {
+    Minimap2Index
+    Minimap2Align as Minimap2AlignByID
+} from "./nextflow_utils/parse_convert/modules/minimap"
+
+include {
+    MergeFasta
+} from "./nextflow_utils/parse_convert/modules/seqkit"
 
 include {
     SummerizeReadsStdout as SummarizePerSampleID_in
@@ -133,8 +143,6 @@ workflow {
     else {
         read_pattern = "${params.read_folder}/${params.read_pattern}"
     }
-    log.debug "Processing files following ${read_pattern}"
-    read_dir_ch = Channel.fromPath( params.read_folder, type: 'dir', checkIfExists: true)
 
     // Create an item where we have the path and the sample ID and the file ID.
     //  If the path is a directory with fastq's in it directly,
@@ -142,63 +150,136 @@ workflow {
     // Alternatively, the sample ID could be barcode01/barcode02 etc.
     read_fastq = Channel.fromPath(read_pattern, checkIfExists: true) \
         | map(x -> [x.Parent.simpleName, x.simpleName,x])
+    read_fastq.dump(tag: "input-data")
 
     if (params.summarize_input){
-        summary = SummarizePerSampleID_in(read_fastq.groupTuple())
-        summary.view{x -> "\nSummary per sample of the input:\n $x"}
+        summary_in = SummarizePerSampleID_in(read_fastq.groupTuple())
+        summary_in.subscribe { x ->
+            log.info "\nSummary per sample of the input:\n$x"
+        }
     }
 
     // Based on the selected method collect the other inputs and start pipelines.
     if (params.consensus_method == "Cycas") {
+        if (params.reference == "" || backbone_file == "") {
+            log.error \
+            """Please provide reference genome and backbone file for Cycas method.
+            reference genome can be provided with --reference and was: '${params.reference}' 
+            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
-        // Cycas(read_dir_ch, backbone, reference)
-        log.warn """Please run the default implementation of cyclomicsseq. \n\n exitting....."""
+        PrepareGenome(reference, params.reference, backbone)
+        // .collect() to turn into repeating value channel.
+        reference_mmi = PrepareGenome.out.mmi_combi.collect()
+        
+        CycasConsensus(read_fastq, reference_mmi)
+        consensus = CycasConsensus.out
+        // Drop the metadata jsons for now
+        consensus = consensus.map{ it -> it.take(3)}
     }
     else if (params.consensus_method == "Cyclotron") {
         log.info """Cyclotron consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        Cyclotron(read_fastq, backbone)
+        consensus = Cyclotron(read_fastq, backbone)
+
     }
+
     else if (params.consensus_method == "Cygnus") {
         log.info """Cygnus consensus generation method selected."""
         consensus = Cygnus(read_fastq)
+
     }
+    
     else if (params.consensus_method == "Cygnus_primed") {
         log.info """Cygnus_primed consensus generation method selected with primer rotation."""
-        log.info """Rotate by primer, demux on barcode."""
-        
-        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        if (params.primer_file == ""){
+            log.error \
+            """Please provide a primer file for Cygnus_primed method.
+            primer file can be provided with --primer_file and was: '${params.primer_file}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
         primer = Channel.fromPath(params.primer_file, checkIfExists: true)
-        consensus = CygnusPrimed(read_fastq, primer, backbone, params.backbone_barcode)
+        // We need a value channel to repeat the usage.
+        primer = primer.collect()
+        CygnusPrimedConsensus(read_fastq, primer)
+        consensus = CygnusPrimedConsensus.out
+        consensus.dump()
+        // consensus.view()
     }
+
     else if (params.consensus_method == "Cygnus_aligned") {
         log.info """Cygnus_aligned consensus generation method selected."""
         log.info """We will align against the provided primer."""
-
+        if (params.reference == "" || backbone_file == "") {
+            log.error \
+            """Please provide reference genome and backbone file for Cygnus)aligned method.
+            reference genome can be provided with --reference and was: '${params.reference}' 
+            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
-        reference = Channel.fromPath(params.primer_file, checkIfExists: true)
+        reference = Channel.fromPath(params.reference, checkIfExists: true)
         PrepareGenome(reference, params.reference, backbone)
         // .collect() to turn into repeating value channel.
         reference_mmi = PrepareGenome.out.mmi_combi.collect()
         consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
     }
+
     else if (params.consensus_method == "Tidehunter") {
         log.info """TideHunter consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         TideHunter(read_fastq, backbone)
     }
+
     else {
         log.warn "Unknown consensus generation method selected"
+        sleep(200)
+        exit 1
     }
 
-    // Sumarize output consensus reads
+    // Publish the consensus fastqs grouped in folders by their sample id
+    consensus.map { it ->
+        it[2].copyTo("${params.output_dir}/results/${it[0]}/${it[2].name}")
+        }
+    
     if (params.summarize_output){
-        summary = SummarizePerSampleID_out(consensus.groupTuple())
-        summary.view{x -> "\nSummary per sample of the output:\n $x"}
+        summary_out = SummarizePerSampleID_out(consensus.groupTuple())
+        summary_out.subscribe { x ->
+            log.info "\nSummary per sample of the output:\n$x"
+        }
+    }
+
+    if (params.reference != ""){
+        log.warn "Aligning to provided reference."
+        sleep(200)
+        
+        // If we have a reference, we then might as well align it all per sample ID.
+        reference = Channel.fromPath(params.reference)
+        Minimap2Index(reference)
+        reference_mmi_final = Minimap2Index.out
+        consensus_by_id = consensus.groupTuple().map{ it -> [it[0], it[0], it[2]]}
+        consensus_by_id.dump(tag: 'consensus-pre-alignment')
+        Minimap2AlignByID(consensus_by_id, reference_mmi_final)
+        consensus_aligned = Minimap2AlignByID.out
+        // Publish the aligned consensus, but as a single file
+        consensus_aligned.map { it ->
+        it[2].copyTo("${params.output_dir}/results_aligned/${it[2].name}")    // Copy the file to the target directory
+        }
     }
 }
+
 
 workflow.onComplete{
     log.info ("\nDone. The results are available in following folder --> $params.output_dir\n")
