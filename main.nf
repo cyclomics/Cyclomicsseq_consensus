@@ -71,7 +71,8 @@ else {
 
 log.debug "parameters obj : ${params}"
 log.debug "workflow object: ${workflow}"
-// ### Printout for user
+
+// ### Printout for user workflow.revision is the github version tag.
 log.info """
     ===================================================
     Cyclomics/CyclomicsSeq_Consensus : Consensus generation
@@ -88,8 +89,8 @@ log.info """
         consensus_method        : $params.consensus_method
 
     Other:
-        Version  : $workflow.commitId
-        Revision : $workflow.revision
+        Version  : $workflow.revision
+        Revision : $workflow.commitId
 """
 
 include {
