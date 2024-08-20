@@ -16,16 +16,14 @@ nextflow.enable.dsl = 2
 ========================================================================================
 */
 // ### PARAMETERS
-params.read_folder             = ""
-params.read_pattern               = "**.{fq,fastq,fq.gz,fastq.gz}"
-params.sequencing_summary_path = "${projectDir}/sequencing_summary*.txt"
-params.backbone                   = ""
-params.primer_file                = ""
-
+params.read_folder    = ""
+params.read_pattern   = "**.{fq,fastq,fq.gz,fastq.gz}"
+params.backbone       = ""
+params.primer_file    = ""
+params.reference      = ""
 // Backbone file is used for custom backbones.
 params.backbone_file  = ""
-// reference indexes are expected to be in reference folder
-params.reference = ""
+
 params.output_dir = "$HOME/Data/CyclomicsSeq"
 params.backbone_barcode = false
 
@@ -33,6 +31,7 @@ params.backbone_barcode = false
 // method selection
 params.summarize_input  = true
 params.summarize_output  = true
+params.skip_alignment = false
 params.consensus_method = "Cycas"
 
 // Pipeline performance metrics
@@ -72,7 +71,7 @@ else {
 log.debug "parameters obj : ${params}"
 log.debug "workflow object: ${workflow}"
 
-// ### Printout for user workflow.revision is the github version tag.
+// ### Printout for user workflow.revision is the github version tag.as
 log.info """
     ===================================================
     Cyclomics/CyclomicsSeq_Consensus : Consensus generation
@@ -262,7 +261,7 @@ workflow {
         }
     }
 
-    if (params.reference != ""){
+    if (params.reference != "" && !params.skip_alignment){
         log.warn "Aligning to provided reference."
         sleep(200)
         
