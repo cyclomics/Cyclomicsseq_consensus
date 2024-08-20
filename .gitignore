@@ -4,3 +4,5 @@ test_*
 work*
 **.fastq.gz
 **.fasta
+
+.vscode
