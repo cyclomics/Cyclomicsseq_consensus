@@ -162,15 +162,19 @@ workflow {
 
     // Based on the selected method collect the other inputs and start pipelines.
     if (params.consensus_method == "Cycas") {
-        if (params.reference == "" || backbone_file == "") {
+        if (params.reference == "") {
             log.error \
-            """Please provide reference genome and backbone file for Cycas method.
-            reference genome can be provided with --reference and was: '${params.reference}' 
-            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """Please provide reference genome for Cycas method.
+            reference genome can be provided with the --reference flag
             """
-            // we need some delay to display the error message above (in ms). 
-            sleep(200)
-            exit 1
+            sleep(200); exit 1
+        }
+        if (params.backbone_file == "") {
+            log.error \
+            """Please provide backbone file for Cycas method.
+            backbone file can be provided with the --backbone_file or --backbone flags
+            """
+            sleep(200) ; exit 1
         }
         log.info """Cycas consensus generation method selected."""
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
@@ -220,15 +224,19 @@ workflow {
     else if (params.consensus_method == "Cygnus_aligned") {
         log.info """Cygnus_aligned consensus generation method selected."""
         log.info """We will align against the provided primer."""
-        if (params.reference == "" || backbone_file == "") {
+        if (params.reference == "") {
             log.error \
-            """Please provide reference genome and backbone file for Cygnus aligned method.
-            reference genome can be provided with --reference and was: '${params.reference}' 
-            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """Please provide reference genome for Cygnus_aligned method.
+            reference genome can be provided with the --reference flag
             """
-            // we need some delay to display the error message above (in ms). 
-            sleep(200)
-            exit 1
+            sleep(200); exit 1
+        }
+        if (params.backbone_file == "") {
+            log.error \
+            """Please provide backbone file for Cygnus_aligned method.
+            backbone file can be provided with the --backbone_file or --backbone flags
+            """
+            sleep(200) ; exit 1
         }
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
@@ -240,15 +248,19 @@ workflow {
     else if (params.consensus_method == "Cygnus2_aligned") {
         log.info """Cygnus2_aligned consensus generation method selected."""
         log.info """We will align against the provided primer."""
-        if (params.reference == "" || backbone_file == "") {
+        if (params.reference == "") {
             log.error \
-            """Please provide reference genome and backbone file for Cygnus)aligned method.
-            reference genome can be provided with --reference and was: '${params.reference}' 
-            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """Please provide reference genome for Cygnus2_aligned method.
+            reference genome can be provided with the --reference flag
             """
-            // we need some delay to display the error message above (in ms). 
-            sleep(200)
-            exit 1
+            sleep(200); exit 1
+        }
+        if (params.backbone_file == "") {
+            log.error \
+            """Please provide backbone file for Cygnus2_aligned method.
+            backbone file can be provided with the --backbone_file or --backbone flags
+            """
+            sleep(200) ; exit 1
         }
         backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
         reference = Channel.fromPath(params.reference, checkIfExists: true)
