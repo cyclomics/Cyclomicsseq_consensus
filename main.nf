@@ -222,7 +222,7 @@ workflow {
         log.info """We will align against the provided primer."""
         if (params.reference == "" || backbone_file == "") {
             log.error \
-            """Please provide reference genome and backbone file for Cygnus)aligned method.
+            """Please provide reference genome and backbone file for Cygnus aligned method.
             reference genome can be provided with --reference and was: '${params.reference}' 
             backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
             """
