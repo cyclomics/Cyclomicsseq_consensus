@@ -106,6 +106,7 @@ include {
     CygnusConsensus
     CygnusAlignedConsensus
     CygnusPrimedConsensus
+    Cygnus2AlignedConsensus
 } from "./nextflow_utils/consensus/subworkflows"
 
 include {
@@ -235,6 +236,26 @@ workflow {
         // .collect() to turn into repeating value channel.
         reference_mmi = PrepareGenome.out.mmi_combi.collect()
         consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
+    }
+    else if (params.consensus_method == "Cygnus2_aligned") {
+        log.info """Cygnus2_aligned consensus generation method selected."""
+        log.info """We will align against the provided primer."""
+        if (params.reference == "" || backbone_file == "") {
+            log.error \
+            """Please provide reference genome and backbone file for Cygnus)aligned method.
+            reference genome can be provided with --reference and was: '${params.reference}' 
+            backbone file can be provided with --backbone_file or --backbone and were: '${params.backbone_file}' or '${params.backbone}'
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
+        backbone  = Channel.fromPath(backbone_file, checkIfExists: true)
+        reference = Channel.fromPath(params.reference, checkIfExists: true)
+        PrepareGenome(reference, params.reference, backbone)
+        // .collect() to turn into repeating value channel.
+        reference_mmi = PrepareGenome.out.mmi_combi.collect()
+        consensus = Cygnus2AlignedConsensus(read_fastq, reference_mmi)
     }
 
     else if (params.consensus_method == "Tidehunter") {
