@@ -39,7 +39,7 @@
         },
         "read_folder": {
           "type": "string",
-          "format": "file-path",
+          "format": "path",
           "description": "fastq_output folder containing either fastq or fastq.gz format, usually the fastq_pass folder made by MinKnow. Can contain barcode subfolders.",
           "default": ""
         },
