@@ -106,6 +106,8 @@ include {
     CygnusConsensus
     CygnusAlignedConsensus
     CygnusPrimedConsensus
+    Cygnus2Consensus
+    Cygnus2PrimedConsensus
     Cygnus2AlignedConsensus
 } from "./nextflow_utils/consensus/subworkflows"
 
@@ -217,8 +219,6 @@ workflow {
         primer = primer.collect()
         CygnusPrimedConsensus(read_fastq, primer)
         consensus = CygnusPrimedConsensus.out
-        consensus.dump()
-        // consensus.view()
     }
 
     else if (params.consensus_method == "Cygnus_aligned") {
@@ -243,8 +243,33 @@ workflow {
         PrepareGenome(reference, params.reference, backbone)
         // .collect() to turn into repeating value channel.
         reference_mmi = PrepareGenome.out.mmi_combi.collect()
-        consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
+        consensus = CygnusAlignedConsensus(read_fastq, reference_mmi).out
     }
+    else if (params.consensus_method == "Cygnus2"){
+        log.info """Cygnus2 consensus generation method selected."""
+
+        consensus = Cygnus2Consensus(read_fastq).out
+
+    }
+    
+    else if (params.consensus_method == "Cygnus2_primed"){
+        log.info """Cygnus2_primed consensus generation method selected."""
+
+        if (params.primer_file == ""){
+            log.error \
+            """Please provide a primer file for Cygnus2_primed method.
+            primer file can be provided with --primer_file.
+            """
+            // we need some delay to display the error message above (in ms). 
+            sleep(200)
+            exit 1
+        }
+        primer = Channel.fromPath(params.primer_file, checkIfExists: true)
+        // We need a value channel to repeat the usage.
+        primer = primer.collect()
+        consensus = Cygnus2PrimedConsensus(read_fastq, primer).out
+    }
+
     else if (params.consensus_method == "Cygnus2_aligned") {
         log.info """Cygnus2_aligned consensus generation method selected."""
         log.info """We will align against the provided primer."""

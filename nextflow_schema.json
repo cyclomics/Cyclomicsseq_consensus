@@ -35,6 +35,9 @@
             "Cygnus",
             "Cygnus_primed",
             "Cygnus_aligned",
+            "Cygnus2",
+            "Cygnus2_primed",
+            "Cygnus2_aligned",
             "Tidehunter"]
         },
         "read_folder": {
