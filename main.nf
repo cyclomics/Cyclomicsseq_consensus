@@ -82,6 +82,7 @@ log.info """
         reference                : $params.reference
         backbone                 : $params.backbone
         backbone_file            : $params.backbone_file
+        backbone selected        : $backbone_file
         output folder            : $params.output_dir
         Cmd line                 : $workflow.commandLine
     Method:  
@@ -171,7 +172,7 @@ workflow {
             """
             sleep(200); exit 1
         }
-        if (params.backbone_file == "") {
+        if (backbone_file == "") {
             log.error \
             """Please provide backbone file for Cycas method.
             backbone file can be provided with the --backbone_file or --backbone flags
@@ -231,7 +232,7 @@ workflow {
             """
             sleep(200); exit 1
         }
-        if (params.backbone_file == "") {
+        if (backbone_file == "") {
             log.error \
             """Please provide backbone file for Cygnus_aligned method.
             backbone file can be provided with the --backbone_file or --backbone flags
@@ -280,7 +281,7 @@ workflow {
             """
             sleep(200); exit 1
         }
-        if (params.backbone_file == "") {
+        if (backbone_file == "") {
             log.error \
             """Please provide backbone file for Cygnus2_aligned method.
             backbone file can be provided with the --backbone_file or --backbone flags
