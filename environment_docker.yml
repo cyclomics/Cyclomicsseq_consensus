@@ -1,0 +1,60 @@
+name: cyclomics
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  # Core Python and tools
+  - python=3.8
+  - pip
+  - setuptools
+  - wheel
+  
+  # Bioinformatics core tools
+  - bcftools
+  - bedtools
+  - bwa
+  - htslib
+  - minimap2
+  - samtools
+  - seqtk
+  - seqkit
+  - mosdepth
+  - freebayes
+  - varscan
+  - sambamba
+  - perbase
+  
+  # Python packages
+  - numpy
+  - pandas
+  - pysam
+  - biopython
+  - pyfastx
+  - python-edlib
+  - parasail-python
+  - ukkonen
+  - fire
+  - loguru
+  - natsort
+  - networkx
+  - tqdm
+  - click
+  - colorama
+  - pyyaml
+  - requests
+  - xmltodict
+  
+  # Additional tools
+  - parallel
+  - jq
+  - openjdk=8
+  
+  # Optional: R and R packages (minimal set)
+  - r-base=4.1
+  - r-data.table
+  - r-ggplot2
+  
+  # Pip packages
+  - pip:
+    - more-itertools
