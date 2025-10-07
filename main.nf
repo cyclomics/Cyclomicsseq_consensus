@@ -26,6 +26,7 @@ params.backbone_file  = ""
 
 params.output_dir = "$HOME/Data/CyclomicsSeq"
 params.backbone_barcode = false
+params.split_reads = true
 
 
 // method selection
@@ -103,6 +104,10 @@ include {
 // } from "./nextflow_utils/consensus/modules/cycas"
 
 include {
+    SplitReadFiles
+} from "./nextflow_utils/parse_convert/modules/seqkit"
+
+include {
     CycasConsensus
     CygnusConsensus
     CygnusAlignedConsensus
@@ -178,6 +183,13 @@ workflow {
         summary_in.subscribe { x ->
             log.info "\nSummary per sample of the input:\n$x"
         }
+    }
+
+    if (params.split_reads) {
+        read_fastq = SplitReadFiles(read_fastq).transpose()
+        read_fastq.dump(tag: "split-data")
+    } else {
+        read_fastq.dump(tag: "input-data-no-split")
     }
 
     // Based on the selected method collect the other inputs and start pipelines.

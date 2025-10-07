@@ -1,3 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+
 TMP_NAME=0.1.2
 
 docker build -t cyclomics/cyclomicsseq_consensus:$TMP_NAME .
