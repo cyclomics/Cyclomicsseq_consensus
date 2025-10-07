@@ -32,7 +32,7 @@ params.backbone_barcode = false
 params.summarize_input  = true
 params.summarize_output  = true
 params.skip_alignment = false
-params.consensus_method = "Cycas"
+params.consensus_method = ""
 
 // Pipeline performance metrics
 params.min_repeat_count = 3
@@ -139,6 +139,23 @@ include {
 workflow {
     log.info """Cyclomics consensus pipeline started"""
 
+    //  Gate clauses for all consensus methods
+    if (params.consensus_method == "") {
+      
+        log.error """Please provide a consensus generation method.
+        Available methods are: Cycas, Cyclotron, Cygnus, Cygnus_primed, Cygnus_aligned, Cygnus2, Cygnus2_primed, Cygnus2_aligned, Tidehunter
+        Method can be provided with the --consensus_method flag
+        """
+        sleep(200); exit 1
+    }
+    if (params.read_folder == "") {
+        log.error """Please provide a folder with fastq reads.
+        Folder can be provided with the --read_folder flag
+        """
+        sleep(200); exit 1
+    }
+
+
     // Process inputs:
     // add the trailing slash if its missing 
     if (params.read_folder.endsWith("/")){
@@ -187,7 +204,7 @@ workflow {
         reference_mmi = PrepareGenome.out.mmi_combi.collect()
         
         CycasConsensus(read_fastq, reference_mmi)
-        consensus = CycasConsensus.out
+        consensus = CycasConsensus
         // Drop the metadata jsons for now
         consensus = consensus.map{ it -> it.take(3)}
     }
@@ -219,7 +236,7 @@ workflow {
         // We need a value channel to repeat the usage.
         primer = primer.collect()
         CygnusPrimedConsensus(read_fastq, primer)
-        consensus = CygnusPrimedConsensus.out
+        consensus = CygnusPrimedConsensus
     }
 
     else if (params.consensus_method == "Cygnus_aligned") {
@@ -244,12 +261,12 @@ workflow {
         PrepareGenome(reference, params.reference, backbone)
         // .collect() to turn into repeating value channel.
         reference_mmi = PrepareGenome.out.mmi_combi.collect()
-        consensus = CygnusAlignedConsensus(read_fastq, reference_mmi).out
+        consensus = CygnusAlignedConsensus(read_fastq, reference_mmi)
     }
     else if (params.consensus_method == "Cygnus2"){
         log.info """Cygnus2 consensus generation method selected."""
 
-        consensus = Cygnus2Consensus(read_fastq).out
+        consensus = Cygnus2Consensus(read_fastq)
 
     }
     
@@ -268,7 +285,7 @@ workflow {
         primer = Channel.fromPath(params.primer_file, checkIfExists: true)
         // We need a value channel to repeat the usage.
         primer = primer.collect()
-        consensus = Cygnus2PrimedConsensus(read_fastq, primer).out
+        consensus = Cygnus2PrimedConsensus(read_fastq, primer)
     }
 
     else if (params.consensus_method == "Cygnus2_aligned") {
